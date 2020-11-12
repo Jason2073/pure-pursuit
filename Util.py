@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import math
+
 
 class Pose(object):
     x = 0.0
@@ -35,16 +37,32 @@ class WaypointSequence(object):
 class TrajectoryConfig(object):
     max_v = 0.0
     max_a = 0.0
-    max_j = 0.0
-    start_vel = 0.0
-    end_vel = 0.0
     interval = 0.0
 
-    def __init__(self, max_v: float, max_a: float, max_j: float,
-                 interval: float, start_vel: float = 0.0, end_vel: float = 0.0):
+    def __init__(self, max_v: float, max_a: float, interval: float):
         self.max_v = max_v
         self.max_a = max_a
-        self.start_vel = start_vel
-        self.end_vel = end_vel
         self.interval = interval
-        self.max_j = max_j
+
+
+class CsvWriter(object):
+    file_path = ""
+
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def write_to_csv(self, *lists):
+        f = open(self.file_path, 'w+')
+        for i in range(len(lists[0])):
+            line = ""
+            for data in lists:
+                line += str(data[i]) + ','
+            line += "\n"
+            f.write(line)
+        f.close()
+
+    def write_lines(self, lines):
+        f = open(self.file_path, 'w+')
+        for line in lines:
+            f.write(line)
+        f.close()
