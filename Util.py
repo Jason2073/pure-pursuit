@@ -8,7 +8,7 @@ class Pose(object):
     y = 0.0
     theta = 0.0
 
-    def __init__(self, x, y, theta):
+    def __init__(self, x: float, y: float, theta: float):
         self.x = x
         self.y = y
         self.theta = theta
@@ -23,6 +23,23 @@ class Pose(object):
     def distance(self, other: Pose):
         return math.hypot(self.x - other.x, self.y - other.y)
 
+
+class SplineSegment(object):
+    curvature = 0
+    pose = Pose(0, 0, 0)
+    vel = 0
+    vel_lim = 0
+    time = 0
+
+    def __init__(self, pose: Pose, curvature: float, vel: float, vel_lim: float, time: float):
+        self.curvature = curvature
+        self.pose = pose
+        self.vel = vel
+        self.vel_lim = vel_lim
+        self.time = time
+
+    def __str__(self):
+        return "Pose, vel, time " + ", " + str(self.vel) + ", " + str(self.time)
 
 class WaypointSequence(object):
     waypoints = []
