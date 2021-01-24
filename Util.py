@@ -44,6 +44,7 @@ class SplineSegment(object):
     def copy(self):
         return SplineSegment(self.pose, self.curvature, self.vel, self.vel_lim, self.time)
 
+
 class WaypointSequence(object):
     waypoints = []
     num_waypoints = 0

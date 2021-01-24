@@ -2,33 +2,34 @@ from typing import List
 
 import numpy as np
 
-from TrajectoryGeneration import Trajectory
 from Util import *
+from TrajectoryGeneration import *
 
 class PurePursuit(object):
     robot_pose = Pose(0, 0, 0)
-    lookahead_distance = 0.0
+    lookahead_at_max_vel = 0.0
     track_width = 0.0
-    traj: Trajectory = None
     pose_list: List[Pose] = []
     last_closest_point_idx = 1
     last_lookahead_frac_inx = 0
     max_v = 0
+    minimum_lookahead = 0
 
-    def __init__(self, lookahead_distance: float, traj: Trajectory, track_width, max_vel: float):
+    def __init__(self,minimum_lookahead: float, lookahead_at_max_vel: float, traj: List[Segment], track_width, max_vel: float):
 
-        self.lookahead_distance = lookahead_distance
+        self.lookahead_at_max_vel = lookahead_at_max_vel
         self.track_width = track_width
-        self.seg_list = traj.segments
-        self.traj = traj
+        self.seg_list = traj
         self.max_v = max_vel
-        for seg in traj.segments:
+        self.minimum_lookahead = minimum_lookahead
+
+        for seg in traj:
             self.pose_list.append(Pose(seg.x, seg.y, seg.heading))
 
     #call once per update cycle
     def update_pose(self, robot_pose: Pose):
         self.robot_pose = robot_pose
-        print(self.calc_closest_point_idx(robot_pose))
+        self.calc_closest_point_idx(robot_pose)
 
     def closest_point_idx(self):
         return min(self.last_closest_point_idx, len(self.seg_list))
@@ -46,7 +47,7 @@ class PurePursuit(object):
         self.last_closest_point_idx = min_idx
         return min_idx
 
-    def calc_lookahead_point(self) -> Pose:
+    def calc_lookahead_point(self, vel) -> Pose:
         robot_pose = self.robot_pose
         closest_idx = self.closest_point_idx()
         path: List[Pose] = self.pose_list
@@ -57,7 +58,7 @@ class PurePursuit(object):
             seg_start = [path[i].x, path[i].y]
             seg_end = [path[i + 1].x, path[i + 1].y]
             c = [robot_pose.x, robot_pose.y]
-            r = self.lookahead_distance
+            r = max(self.lookahead_at_max_vel * (vel / self.max_v), self.minimum_lookahead)
 
             d = [seg_end[0] - seg_start[0], seg_end[1] - seg_start[1]]
             f = [seg_start[0] - c[0], seg_start[1] - c[1]]
@@ -101,7 +102,7 @@ class PurePursuit(object):
 
         return [left, right]
 
-    def curvature_to_lookahead(self, lookahead_point: Pose):
+    def curvature_to_lookahead(self, lookahead_point: Pose, vel):
         # positive curvature is a right turn for these calcs
         robot_pose = self.robot_pose
 
@@ -113,5 +114,5 @@ class PurePursuit(object):
         side = np.sign(math.sin(robot_pose.theta) * (lookahead_point.x - robot_pose.x)
                        - math.cos(robot_pose.theta) * (lookahead_point.y - robot_pose.y))
 
-        curvature = 2.0 * x / (math.pow(self.lookahead_distance, 2))
+        curvature = 2.0 * x / (math.pow(max(self.lookahead_at_max_vel * (vel/self.max_v), self.minimum_lookahead), 2))
         return side * curvature

@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import PathGeneration
+import TrajectoryGeneration
 from CombinedDriveController import CombinedDriveController
 from PurePursuitController import PurePursuit
 from Util import *
@@ -59,39 +60,38 @@ if __name__ == "__main__":
     max_v = 6
     max_a = 10
     dt = 1 / 60.0
-    drive_base_width = 0.2
-    lookahead = .05
+    drive_base_width = .4
+    lookahead_at_max_vel = .3
+    minimum_lookahead = .05
 
-    path = WaypointSequence()
-    path.add_waypoint(Pose(0.0, 0.0, 0))
-    path.add_waypoint(Pose(2.0, 3.0, math.pi/4))
-    path.add_waypoint(Pose(6.0, 6.0, math.pi/4))
-
-
-    # path.add_waypoint(Pose(0.0, 0.0, 0 + math.pi))
-    # path.add_waypoint(Pose(-1.0, 0, 0 + math.pi))
-    # path.add_waypoint(Pose(-1.0, 1, 1.57 + math.pi))
-    # path.add_waypoint(Pose(-2.0, 1, 0 + math.pi))
-    # path.add_waypoint(Pose(-2.0, 2, -1.57 + math.pi))
-    # path.add_waypoint(Pose(-1.0, 1, -0.78 + math.pi))
-    # path.add_waypoint(Pose(0.0, 0, 0 + math.pi))
+    ws = WaypointSequence()
+    ws.add_waypoint(Pose(0, 0, math.pi / 2))
+    # ws.add_waypoint(Pose(2, 2, 3 * math.pi/2))
+    ws.add_waypoint(Pose(-1, 1,  math.pi))
 
     config = TrajectoryConfig(max_v, max_a, dt)
 
-    trajectory = PathGeneration.generate_from_path(path, config, 0, 0)
-    left_right_traj = PathGeneration.make_left_right_trajectories(trajectory, drive_base_width)
+    trajectory = PathGeneration.generate_from_waypoints(ws, config, 0, 0)
+
+    left_right_traj = TrajectoryGeneration.make_left_right_trajectories(trajectory, drive_base_width)
     csv = CsvWriter("C:/Users/Stanl/PycharmProjects/PurePursuit/traj.csv")
     time_list = []
-    for i in range(len(left_right_traj[0].segments)):
-        time_list.append(dt*i)
-    csv.write_to_csv(time_list, trajectory.segments)
+    left_list = []
+    right_list = []
+    for i in range(len(left_right_traj[0])):
+        left_list.append(left_right_traj[0][i].vel)
+        right_list.append(left_right_traj[1][i].vel)
+        time_list.append(left_right_traj[0][1].dt * i)
+
+    csv.write_to_csv(time_list, left_list, right_list)
 
     robot = DriveBase(Pose(0, 0, 0), drive_base_width, max_v)
-    pp = PurePursuit(lookahead, trajectory, drive_base_width, max_v)
+    pp = PurePursuit(minimum_lookahead, lookahead_at_max_vel, left_right_traj[2], drive_base_width, max_v)
     controller = CombinedDriveController(pp, left_right_traj, max_v)
     cx = []
     cy = []
-    for seg in trajectory.segments:
+
+    for seg in left_right_traj[2]:
         coords = [seg.x, seg.y]
         print(coords)
         cx.append(coords[0])
@@ -100,8 +100,10 @@ if __name__ == "__main__":
     time = 0
     robot_x_positions = []
     robot_y_positions = []
-    for i in range(int(len(trajectory.segments))):
+    for i in range(int(len(left_right_traj[2]))):
         left_right = controller.calc_combined_output(robot_pose=robot.pose)
+        if controller.is_finished(3):
+            break
         print(left_right)
         robot.simulate_step(left_right[0], left_right[1], dt)
         robot_x_positions.append(robot.pose.x)
@@ -119,4 +121,5 @@ if __name__ == "__main__":
         plt.plot(controller.lookahead_pose.x, controller.lookahead_pose.y, "b", label="lookahead")
         plt.axis("equal")
         plt.grid(True)
-        plt.pause(.01)
+        plt.pause(.005)
+    plt.pause(5)
